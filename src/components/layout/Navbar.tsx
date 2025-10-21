@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuthStore } from '@/stores';
@@ -9,6 +10,12 @@ import { UserGroupIcon, ArrowRightOnRectangleIcon } from '@heroicons/react/24/ou
 export const Navbar = () => {
   const router = useRouter();
   const { isAuthenticated, user, logout } = useAuthStore();
+  const [mounted, setMounted] = useState(false);
+
+  // 클라이언트에서만 렌더링 (hydration mismatch 방지)
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const handleLogout = () => {
     logout();
@@ -26,7 +33,13 @@ export const Navbar = () => {
 
           {/* 우측 메뉴 */}
           <div className="flex items-center gap-4">
-            {isAuthenticated ? (
+            {!mounted ? (
+              // 로딩 중 스켈레톤 (깜빡임 방지)
+              <div className="flex gap-4">
+                <div className="w-20 h-10 bg-gray-200 rounded animate-pulse"></div>
+                <div className="w-24 h-10 bg-gray-200 rounded animate-pulse"></div>
+              </div>
+            ) : isAuthenticated ? (
               <>
                 {/* 로그인 완료 상태 */}
                 <span className="text-sm text-gray-700 hidden sm:inline">

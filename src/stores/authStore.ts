@@ -30,12 +30,17 @@ export const useAuthStore = create<AuthState>()(
           isAuthenticated: true,
         }),
 
-      logout: () =>
+      logout: () => {
+        // localStorage 명시적으로 삭제
+        if (typeof window !== 'undefined') {
+          localStorage.removeItem('auth-storage');
+        }
         set({
           user: null,
           token: null,
           isAuthenticated: false,
-        }),
+        });
+      },
 
       updateUser: (updates) =>
         set((state) => ({
