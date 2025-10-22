@@ -33,19 +33,26 @@ export default function MapPage() {
 
   const [routeStops, setRouteStops] = useState<ShuttleStop[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [mounted, setMounted] = useState(false);
 
-  // 인증 확인
+  // Hydration 완료 확인
   useEffect(() => {
-    if (!isAuthenticated) {
+    setMounted(true);
+  }, []);
+
+  // 인증 확인 (hydration 완료 후에만)
+  useEffect(() => {
+    if (mounted && !isAuthenticated) {
       router.push('/login');
     }
-  }, [isAuthenticated, router]);
+  }, [mounted, isAuthenticated, router]);
 
   // 초기 데이터 로드
   useEffect(() => {
     loadInitialData();
   }, []);
 
+  // 셔틀 맵 확인 페이지 들어왔을 때 가져와야할 친구, 노선 정보 로드
   const loadInitialData = async () => {
     setIsLoading(true);
     try {
@@ -108,6 +115,7 @@ export default function MapPage() {
     }
   }, [selectedRoute, selectedFriend]);
 
+  // 친구 선택해서 해당 셔틀 선택 시 노선 경유지 정보 모두 로드
   const loadRouteStops = async (routeId: number) => {
     try {
       // TODO: 백엔드 API 연동 시 주석 해제
@@ -123,6 +131,7 @@ export default function MapPage() {
       ];
 
       setRouteStops(mockStops);
+      // eslint-disable-next-line
     } catch (error: any) {
       console.error('Failed to load route stops:', error);
       showToast('경유지 정보를 불러오는데 실패했습니다.', 'error');
@@ -213,7 +222,7 @@ export default function MapPage() {
         <div className="absolute inset-0 bg-white bg-opacity-75 flex items-center justify-center z-50">
           <div className="text-center">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-            <p className="text-gray-700">지도를 불러오는 중...</p>
+            <p className= "text-gray-700">지도를 불러오는 중...</p>
           </div>
         </div>
       )}
@@ -256,16 +265,18 @@ export default function MapPage() {
       )}
 
       {/* 카카오 맵 */}
-      <KakaoMap
-        friends={friends}
-        selectedFriend={selectedFriend}
-        routeStops={routeStops}
-        routePath={arrivalInfo?.routePath || []}
-        onFriendClick={handleFriendClick}
-        onStopClick={handleStopClick}
-        selectedStops={selectedStops}
-        myLocation={myLocation}
-      />
+      {mounted && (
+        <KakaoMap
+          friends={friends}
+          selectedFriend={selectedFriend}
+          routeStops={routeStops}
+          routePath={arrivalInfo?.routePath || []}
+          onFriendClick={handleFriendClick}
+          onStopClick={handleStopClick}
+          selectedStops={selectedStops}
+          myLocation={myLocation}
+        />
+      )}
 
       {/* Toasts */}
       {toasts.map((toast) => (

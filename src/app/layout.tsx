@@ -24,17 +24,17 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const kakaoAppKey = process.env.NEXT_PUBLIC_KAKAO_MAP_APP_KEY;
+
   return (
     <html lang="ko">
-      <head>
-        <Script
-          src={`//dapi.kakao.com/v2/maps/sdk.js?appkey=${process.env.NEXT_PUBLIC_KAKAO_MAP_APP_KEY}&autoload=false`}
-          strategy="beforeInteractive"
-        />
-      </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
+        <Script
+          src={`https://dapi.kakao.com/v2/maps/sdk.js?appkey=${kakaoAppKey}&autoload=false`}
+          strategy="beforeInteractive"
+        />
         <Navbar />
         <main className="pt-16">
           {children}

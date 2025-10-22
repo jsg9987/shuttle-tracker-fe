@@ -26,13 +26,19 @@ export default function FriendsPage() {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [searchEmail, setSearchEmail] = useState('');
   const [isSearching, setIsSearching] = useState(false);
+  const [mounted, setMounted] = useState(false);
 
-  // 인증 확인
+  // Hydration 완료 확인
   useEffect(() => {
-    if (!isAuthenticated) {
+    setMounted(true);
+  }, []);
+
+  // 인증 확인 (hydration 완료 후에만)
+  useEffect(() => {
+    if (mounted && !isAuthenticated) {
       router.push('/login');
     }
-  }, [isAuthenticated, router]);
+  }, [mounted, isAuthenticated, router]);
 
   // 초기 데이터 로드
   useEffect(() => {
