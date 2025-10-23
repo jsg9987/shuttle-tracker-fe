@@ -31,7 +31,7 @@ export const StopSelector = ({
   };
 
   return (
-    <div className="absolute top-4 right-4 bg-white rounded-lg shadow-lg p-6 z-10 max-w-sm">
+    <div className="absolute top-4 left-4 right-4 sm:left-auto sm:right-4 bg-white rounded-lg shadow-lg p-4 sm:p-6 z-10 max-w-sm max-h-[70vh] sm:max-h-[80vh] overflow-y-auto">
       <h3 className="text-lg font-bold text-gray-900 mb-2">
         {friend.name}
         {friend.busRoute && ` / ${friend.busRoute.routeName}`}

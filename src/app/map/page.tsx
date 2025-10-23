@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuthStore, useMapStore, useLocationStore } from '@/stores';
+import { useGeolocation } from '@/hooks/useGeolocation';
 import { friendApi, shuttleApi } from '@/lib/api';
 import { KakaoMap, ArrivalInfoCard, StopSelector, SearchBar } from '@/components/map';
 import { Button, useToast, Toast } from '@/components/common';
@@ -12,7 +13,8 @@ import type { Friend, ShuttleRoute, ShuttleStop } from '@/types';
 export default function MapPage() {
   const router = useRouter();
   const { isAuthenticated } = useAuthStore();
-  const { myLocation } = useLocationStore();
+  const { myLocation, isSharing } = useLocationStore();
+  const { startTracking, stopTracking } = useGeolocation();
   const {
     friends,
     selectedFriend,
@@ -51,6 +53,27 @@ export default function MapPage() {
   useEffect(() => {
     loadInitialData();
   }, []);
+
+  // 맵 페이지 진입 시 내 위치 추적 시작
+  useEffect(() => {
+    if (!mounted || !isAuthenticated) return;
+
+    // 위치 공유 중이 아닐 때만 맵에서 위치 추적 시작
+    if (!isSharing) {
+      startTracking().catch((error) => {
+        console.error('Failed to start location tracking:', error);
+        showToast('위치 정보를 가져올 수 없습니다. 브라우저 설정을 확인해주세요.', 'error');
+      });
+    }
+
+    // 컴포넌트 언마운트 시 위치 추적 중지 (위치 공유 중이면 유지)
+    return () => {
+      if (!isSharing) {
+        stopTracking();
+      }
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mounted, isAuthenticated]);
 
   // 셔틀 맵 확인 페이지 들어왔을 때 가져와야할 친구, 노선 정보 로드
   const loadInitialData = async () => {

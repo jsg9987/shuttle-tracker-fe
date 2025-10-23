@@ -1,0 +1,6 @@
+<svg width="36" height="37" viewBox="0 0 36 37" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- 초록색 원형 마커 (선택된 경유지) -->
+  <circle cx="18" cy="18" r="17" fill="#00C851" stroke="#007E33" stroke-width="2"/>
+  <circle cx="18" cy="18" r="12" fill="white"/>
+  <circle cx="18" cy="18" r="8" fill="#00C851"/>
+</svg>

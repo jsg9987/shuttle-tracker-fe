@@ -51,13 +51,16 @@ export const KakaoMap = ({
       center={center}
       style={{ width: '100%', height: '100%' }}
       level={level}
+      draggable={true}
+      scrollwheel={true}
+      disableDoubleClick={false}
     >
       {/* 내 위치 마커 */}
       {myLocation && (
         <MapMarker
           position={myLocation}
           image={{
-            src: 'https://t1.daumcdn.net/localimg/localimages/07/mapapidoc/markerStar.png',
+            src: '/markers/marker-my-location.svg',
             size: { width: 24, height: 35 },
           }}
           title="내 위치"
@@ -77,8 +80,8 @@ export const KakaoMap = ({
             onClick={() => onFriendClick(friend)}
             image={{
               src: isSelected
-                ? 'https://t1.daumcdn.net/localimg/localimages/07/mapapidoc/marker_red.png'
-                : 'https://t1.daumcdn.net/localimg/localimages/07/mapapidoc/marker_blue.png',
+                ? '/markers/marker-friend-red.svg'
+                : '/markers/marker-friend-blue.svg',
               size: { width: 32, height: 42 },
             }}
             title={friend.name}
@@ -97,8 +100,8 @@ export const KakaoMap = ({
             onClick={() => onStopClick(stop)}
             image={{
               src: isSelected
-                ? 'https://t1.daumcdn.net/localimg/localimages/07/mapapidoc/marker_number_green.png'
-                : 'https://t1.daumcdn.net/localimg/localimages/07/mapapidoc/marker_number_blue.png',
+                ? '/markers/marker-stop-green.svg'
+                : '/markers/marker-stop-blue.svg',
               size: { width: 36, height: 37 },
             }}
             title={`${stop.sequence}. ${stop.stopName}`}
@@ -106,7 +109,7 @@ export const KakaoMap = ({
         );
       })}
 
-      {/* 노선 경로 */}
+      {/* 노선 경로 (도착 시간 계산 후에만 표시) */}
       {routePath.length > 0 && (
         <Polyline
           path={routePath}
@@ -114,17 +117,6 @@ export const KakaoMap = ({
           strokeColor="#FF0000"
           strokeOpacity={0.7}
           strokeStyle="solid"
-        />
-      )}
-
-      {/* 경유지 연결 경로 (선택되지 않은 경우 점선으로 표시) */}
-      {routeStops.length > 1 && routePath.length === 0 && (
-        <Polyline
-          path={routeStops.map((stop) => ({ lat: stop.lat, lng: stop.lng }))}
-          strokeWeight={3}
-          strokeColor="#0000FF"
-          strokeOpacity={0.5}
-          strokeStyle="dashed"
         />
       )}
     </Map>

@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuthStore } from '@/stores';
 import { Button } from '@/components/common';
-import { UserGroupIcon, ArrowRightOnRectangleIcon } from '@heroicons/react/24/outline';
+import { UserGroupIcon, UserIcon, ArrowRightOnRectangleIcon } from '@heroicons/react/24/outline';
 
 export const Navbar = () => {
   const router = useRouter();
@@ -53,6 +53,15 @@ export const Navbar = () => {
                 >
                   <UserGroupIcon className="w-6 h-6" />
                   <span className="hidden sm:inline">친구</span>
+                </button>
+
+                <button
+                  onClick={() => router.push('/mypage')}
+                  className="flex items-center gap-2 text-gray-700 hover:text-blue-600 transition-colors"
+                  title="마이페이지"
+                >
+                  <UserIcon className="w-6 h-6" />
+                  <span className="hidden sm:inline">마이페이지</span>
                 </button>
 
                 <button

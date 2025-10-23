@@ -1,0 +1,6 @@
+<svg width="36" height="37" viewBox="0 0 36 37" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- 파란색 원형 마커 (미선택 경유지) -->
+  <circle cx="18" cy="18" r="17" fill="#0066FF" stroke="#003D99" stroke-width="2"/>
+  <circle cx="18" cy="18" r="12" fill="white"/>
+  <circle cx="18" cy="18" r="8" fill="#0066FF"/>
+</svg>
