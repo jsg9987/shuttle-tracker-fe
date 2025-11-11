@@ -24,9 +24,9 @@ export const getCurrentPosition = (): Promise<Location> => {
         reject(error);
       },
       {
-        enableHighAccuracy: true, // 높은 정확도 사용
-        timeout: 10000, // 10초 타임아웃
-        maximumAge: 0, // 캐시 사용 안 함
+        enableHighAccuracy: false, // 빠른 위치 획득 (낮은 정확도)
+        timeout: 30000, // 30초 타임아웃
+        maximumAge: 5000, // 5초 이내 캐시 허용
       }
     );
   });
@@ -66,9 +66,9 @@ export const watchPosition = (
       }
     },
     {
-      enableHighAccuracy: true,
-      timeout: 10000,
-      maximumAge: 0,
+      enableHighAccuracy: false, // 빠른 위치 획득 (낮은 정확도)
+      timeout: 30000, // 30초 타임아웃
+      maximumAge: 5000, // 5초 이내 캐시 허용
     }
   );
 

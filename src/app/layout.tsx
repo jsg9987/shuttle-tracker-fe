@@ -24,7 +24,7 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const kakaoAppKey = process.env.NEXT_PUBLIC_KAKAO_MAP_APP_KEY;
+  const kakaoAppKey = process.env.NEXT_PUBLIC_KAKAO_MAP_API_KEY;
 
   return (
     <html lang="ko">
