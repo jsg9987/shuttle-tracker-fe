@@ -5,7 +5,8 @@ import { useRouter } from 'next/navigation';
 import { Button, Toggle, useToast, Toast } from '@/components/common';
 import { useAuthStore, useLocationStore } from '@/stores';
 import { useGeolocation } from '@/hooks/useGeolocation';
-import { locationApi } from '@/lib/api';
+import { startLocationSharing as apiStartLocationSharing, stopLocationSharing as apiStopLocationSharing, getMyLocationShare } from '@/lib/api/location';
+import { getCurrentPosition } from '@/lib/utils/geolocation';
 import { MapPinIcon, ClockIcon } from '@heroicons/react/24/solid';
 
 export default function Home() {
@@ -17,22 +18,45 @@ export default function Home() {
 
   const [isLoading, setIsLoading] = useState(false);
 
+  // 페이지 로드 시 기존 위치 공유 세션 복원
+  useEffect(() => {
+    if (!isAuthenticated) return;
+
+    const restoreLocationShare = async () => {
+      try {
+        const locationShare = await getMyLocationShare();
+        if (locationShare && locationShare.isActive) {
+          // 위치 공유 중인 세션 복원
+          startLocationSharing(locationShare);
+          // 위치 추적 재시작
+          await startTracking();
+        }
+      } catch (error) {
+        // 404 에러는 위치 공유 중이 아님을 의미 (정상)
+        console.log('No active location share session');
+      }
+    };
+
+    restoreLocationShare();
+  }, [isAuthenticated]);
+
   // 남은 시간 타이머
   useEffect(() => {
     if (!isSharing || remainingTime === null) return;
 
     const timer = setInterval(() => {
-      setRemainingTime(Math.max(0, remainingTime - 1));
+      const newTime = Math.max(0, remainingTime - 1);
+      setRemainingTime(newTime);
 
       // 시간 만료 시 자동 종료
-      if (remainingTime <= 1) {
+      if (newTime <= 0) {
         handleStopSharing();
         showToast('위치 공유가 자동으로 종료되었습니다.', 'info');
       }
     }, 1000);
 
     return () => clearInterval(timer);
-  }, [isSharing, remainingTime, setRemainingTime]);
+  }, [isSharing, remainingTime]);
 
   // 위치 공유 시작
   const handleStartSharing = async () => {
@@ -52,30 +76,26 @@ export default function Home() {
     setIsLoading(true);
 
     try {
-      // 위치 추적 시작
+      // 1. 현재 위치 가져오기
+      const currentLocation = await getCurrentPosition();
+
+      // 2. 백엔드에 위치 공유 시작 요청
+      const locationShare = await apiStartLocationSharing(
+        currentLocation.lat,
+        currentLocation.lng
+      );
+
+      // 3. Zustand 스토어에 저장
+      startLocationSharing(locationShare);
+
+      // 4. 위치 추적 시작 (30초마다 자동 업데이트)
       await startTracking();
 
-      // TODO: 백엔드 API 연동 시 주석 해제
-      // const locationShare = await locationApi.startLocationSharing(myLocation);
-
-      // Mock 데이터
-      await new Promise((resolve) => setTimeout(resolve, 500));
-      const now = new Date();
-      const endTime = new Date(now.getTime() + 60 * 60 * 1000); // 1시간 후
-
-      const mockLocationShare = {
-        id: 1,
-        userId: user.id,
-        startTime: now.toISOString(),
-        endTime: endTime.toISOString(),
-        isActive: true,
-      };
-
-      startLocationSharing(mockLocationShare);
       showToast('위치 공유가 시작되었습니다. (1시간)', 'success');
     } catch (error: any) {
       console.error('Failed to start location sharing:', error);
-      showToast(error?.message || '위치 공유를 시작할 수 없습니다.', 'error');
+      const errorMessage = error?.message || '위치 공유를 시작할 수 없습니다.';
+      showToast(errorMessage, 'error');
     } finally {
       setIsLoading(false);
     }
@@ -86,18 +106,20 @@ export default function Home() {
     setIsLoading(true);
 
     try {
-      // TODO: 백엔드 API 연동 시 주석 해제
-      // await locationApi.stopLocationSharing();
+      // 1. 백엔드에 위치 공유 중지 요청
+      await apiStopLocationSharing();
 
-      // Mock 데이터
-      await new Promise((resolve) => setTimeout(resolve, 500));
-
+      // 2. 위치 추적 중지
       stopTracking();
+
+      // 3. Zustand 스토어 초기화
       stopLocationSharing();
+
       showToast('위치 공유가 중지되었습니다.', 'info');
     } catch (error: any) {
       console.error('Failed to stop location sharing:', error);
-      showToast(error?.message || '위치 공유를 중지할 수 없습니다.', 'error');
+      const errorMessage = error?.message || '위치 공유를 중지할 수 없습니다.';
+      showToast(errorMessage, 'error');
     } finally {
       setIsLoading(false);
     }
@@ -115,8 +137,13 @@ export default function Home() {
   // 남은 시간 포맷팅
   const formatRemainingTime = (seconds: number | null): string => {
     if (seconds === null) return '';
-    const minutes = Math.floor(seconds / 60);
+    const hours = Math.floor(seconds / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
     const secs = seconds % 60;
+
+    if (hours > 0) {
+      return `${hours}시간 ${minutes}분 ${secs}초`;
+    }
     return `${minutes}분 ${secs}초`;
   };
 
@@ -195,7 +222,7 @@ export default function Home() {
                   strokeLinecap="round"
                   strokeLinejoin="round"
                   strokeWidth={2}
-                  d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"
+                  d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 013.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"
                 />
               </svg>
               <h2 className="text-2xl font-bold text-gray-900">셔틀 맵</h2>
@@ -232,14 +259,6 @@ export default function Home() {
             </li>
           </ol>
         </div>
-
-        {/* Mock 데이터 안내 */}
-        {isAuthenticated && (
-          <div className="mt-6 bg-yellow-50 border border-yellow-200 rounded-lg p-4 text-sm text-yellow-800">
-            <p className="font-medium">🔧 개발 모드</p>
-            <p className="mt-1">현재 Mock 데이터로 작동합니다. 백엔드 API 연동 후 실제 데이터가 표시됩니다.</p>
-          </div>
-        )}
       </div>
 
       {/* Toasts */}

@@ -1,7 +1,6 @@
 // ==================== User 관련 ====================
 
 export interface User {
-  id: number;
   email: string;
   name: string;
   locationShareAgree: boolean; // location_share_agree - 위치 공유 영구 동의 여부
@@ -20,10 +19,12 @@ export interface SignupRequest {
   name: string;
 }
 
-// 인증 응답
+// 인증 응답 (로그인 API 응답)
 export interface AuthResponse {
-  user: User;
-  token: string;
+  accessToken: string;
+  email: string;
+  name: string;
+  locationShareAgree: boolean;
 }
 
 // ==================== Location 관련 ====================

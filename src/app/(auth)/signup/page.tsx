@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Button, Input, useToast, Toast } from '@/components/common';
-import { authApi } from '@/lib/api';
+import { signup } from '@/lib/api/auth';
 import type { SignupRequest } from '@/types';
 
 export default function SignupPage() {
@@ -63,15 +63,12 @@ export default function SignupPage() {
     setIsLoading(true);
 
     try {
-      // TODO: 백엔드 API 연동 시 주석 해제
-      // await authApi.signup({
-      //   email: formData.email,
-      //   password: formData.password,
-      //   name: formData.name,
-      // });
-
-      // Mock 데이터 (임시)
-      await new Promise((resolve) => setTimeout(resolve, 1000)); // 로딩 시뮬레이션
+      // 회원가입 API 호출
+      await signup({
+        email: formData.email,
+        password: formData.password,
+        name: formData.name,
+      });
 
       showToast('회원가입 성공! 로그인 페이지로 이동합니다.', 'success');
 
@@ -81,10 +78,10 @@ export default function SignupPage() {
       }, 1500);
     } catch (error: any) {
       console.error('Signup error:', error);
-      showToast(
-        error?.message || '회원가입에 실패했습니다. 다시 시도해주세요.',
-        'error'
-      );
+
+      // 백엔드 에러 메시지 추출
+      const errorMessage = error?.message || '회원가입에 실패했습니다. 다시 시도해주세요.';
+      showToast(errorMessage, 'error');
     } finally {
       setIsLoading(false);
     }
@@ -178,12 +175,6 @@ export default function SignupPage() {
             </p>
           </div>
         </form>
-
-        {/* Mock 데이터 안내 */}
-        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 text-sm text-yellow-800">
-          <p className="font-medium">🔧 개발 모드</p>
-          <p className="mt-1">현재 Mock 데이터로 작동합니다. 회원가입 후 로그인 페이지로 이동합니다.</p>
-        </div>
       </div>
 
       {/* Toasts */}

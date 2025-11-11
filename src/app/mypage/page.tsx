@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/stores';
 import { Button, Input, Toggle, useToast, Toast } from '@/components/common';
-import { authApi } from '@/lib/api';
+import { getMyInfo, changePassword, updateLocationShareAgree } from '@/lib/api/auth';
 import { UserCircleIcon, KeyIcon, MapPinIcon } from '@heroicons/react/24/solid';
 
 export default function MyPage() {
@@ -40,23 +40,28 @@ export default function MyPage() {
     }
   }, [mounted, isAuthenticated, router]);
 
-  // user 정보 변경 시 locationShareAgree 동기화
+  // 페이지 로드 시 최신 사용자 정보 가져오기
   useEffect(() => {
-    if (user) {
-      setLocationShareAgree(user.locationShareAgree);
+    if (isAuthenticated) {
+      loadUserInfo();
     }
-  }, [user]);
+  }, [isAuthenticated]);
+
+  const loadUserInfo = async () => {
+    try {
+      const userInfo = await getMyInfo();
+      updateUser(userInfo);
+      setLocationShareAgree(userInfo.locationShareAgree);
+    } catch (error) {
+      console.error('Failed to load user info:', error);
+    }
+  };
 
   // 위치 공유 동의 변경
   const handleLocationShareToggle = async (enabled: boolean) => {
     setIsUpdatingLocation(true);
     try {
-      // TODO: 백엔드 API 연동 시 주석 해제
-      // await authApi.updateLocationShareAgree(enabled);
-
-      // Mock 데이터
-      await new Promise((resolve) => setTimeout(resolve, 500));
-
+      await updateLocationShareAgree(enabled);
       setLocationShareAgree(enabled);
       updateUser({ locationShareAgree: enabled });
       showToast(
@@ -65,7 +70,8 @@ export default function MyPage() {
       );
     } catch (error: any) {
       console.error('Failed to update location share agree:', error);
-      showToast('위치 공유 동의 설정을 변경할 수 없습니다.', 'error');
+      const errorMessage = error?.message || '위치 공유 동의 설정을 변경할 수 없습니다.';
+      showToast(errorMessage, 'error');
     } finally {
       setIsUpdatingLocation(false);
     }
@@ -106,14 +112,11 @@ export default function MyPage() {
     setIsChangingPassword(true);
 
     try {
-      // TODO: 백엔드 API 연동 시 주석 해제
-      // await authApi.changePassword({
-      //   currentPassword: passwordForm.currentPassword,
-      //   newPassword: passwordForm.newPassword,
-      // });
-
-      // Mock 데이터
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+      await changePassword({
+        currentPassword: passwordForm.currentPassword,
+        newPassword: passwordForm.newPassword,
+        newPasswordConfirm: passwordForm.confirmPassword,
+      });
 
       showToast('비밀번호가 성공적으로 변경되었습니다.', 'success');
       setPasswordForm({
@@ -121,12 +124,11 @@ export default function MyPage() {
         newPassword: '',
         confirmPassword: '',
       });
+      setPasswordErrors({});
     } catch (error: any) {
       console.error('Failed to change password:', error);
-      showToast(
-        error?.message || '비밀번호 변경에 실패했습니다. 현재 비밀번호를 확인해주세요.',
-        'error'
-      );
+      const errorMessage = error?.message || '비밀번호 변경에 실패했습니다. 현재 비밀번호를 확인해주세요.';
+      showToast(errorMessage, 'error');
     } finally {
       setIsChangingPassword(false);
     }
@@ -157,13 +159,9 @@ export default function MyPage() {
               <span className="text-sm font-medium text-gray-700">이름</span>
               <span className="text-sm text-gray-900">{user.name}</span>
             </div>
-            <div className="flex justify-between items-center py-3 border-b">
+            <div className="flex justify-between items-center py-3">
               <span className="text-sm font-medium text-gray-700">이메일</span>
               <span className="text-sm text-gray-900">{user.email}</span>
-            </div>
-            <div className="flex justify-between items-center py-3">
-              <span className="text-sm font-medium text-gray-700">회원 ID</span>
-              <span className="text-sm text-gray-900">#{user.id}</span>
             </div>
           </div>
         </div>
@@ -256,12 +254,6 @@ export default function MyPage() {
               비밀번호 변경
             </Button>
           </form>
-        </div>
-
-        {/* Mock 데이터 안내 */}
-        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 text-sm text-yellow-800">
-          <p className="font-medium">🔧 개발 모드</p>
-          <p className="mt-1">현재 Mock 데이터로 작동합니다. 백엔드 API 연동 후 실제 데이터가 반영됩니다.</p>
         </div>
       </div>
 

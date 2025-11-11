@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/stores';
-import { friendApi } from '@/lib/api';
+import { getFriends, getReceivedFriendRequests, sendFriendRequest, acceptFriendRequest, rejectFriendRequest, deleteFriend, type Friend, type FriendRequest } from '@/lib/api/friend';
 import { Button, Input, Modal, useToast, Toast } from '@/components/common';
 import {
   UserGroupIcon,
@@ -13,15 +13,14 @@ import {
   XMarkIcon,
   MagnifyingGlassIcon,
 } from '@heroicons/react/24/outline';
-import type { Friend, FriendRelation } from '@/types';
 
 export default function FriendsPage() {
   const router = useRouter();
-  const { isAuthenticated, user } = useAuthStore();
+  const { isAuthenticated } = useAuthStore();
   const { toasts, showToast, removeToast } = useToast();
 
   const [friends, setFriends] = useState<Friend[]>([]);
-  const [pendingRequests, setPendingRequests] = useState<FriendRelation[]>([]);
+  const [pendingRequests, setPendingRequests] = useState<FriendRequest[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [searchEmail, setSearchEmail] = useState('');
@@ -50,49 +49,13 @@ export default function FriendsPage() {
   const loadFriendsData = async () => {
     setIsLoading(true);
     try {
-      // TODO: 백엔드 API 연동 시 주석 해제
-      // const [friendsData, requestsData] = await Promise.all([
-      //   friendApi.getFriends(),
-      //   friendApi.getPendingFriendRequests(),
-      // ]);
+      const [friendsData, requestsData] = await Promise.all([
+        getFriends(),
+        getReceivedFriendRequests(),
+      ]);
 
-      // Mock 데이터
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-
-      const mockFriends: Friend[] = [
-        {
-          id: 2,
-          name: '김철수',
-          email: 'kim@ssafy.com',
-          isLocationSharing: true,
-          currentLocation: { lat: 36.1076, lng: 128.4188 },
-        },
-        {
-          id: 3,
-          name: '이영희',
-          email: 'lee@ssafy.com',
-          isLocationSharing: false,
-        },
-        {
-          id: 4,
-          name: '박민수',
-          email: 'park@ssafy.com',
-          isLocationSharing: true,
-          currentLocation: { lat: 36.1086, lng: 128.4198 },
-        },
-      ];
-
-      const mockRequests: FriendRelation[] = [
-        {
-          id: 10,
-          fromUserId: 5,
-          toUserId: user?.id || 1,
-          status: 'PENDING',
-        },
-      ];
-
-      setFriends(mockFriends);
-      setPendingRequests(mockRequests);
+      setFriends(friendsData);
+      setPendingRequests(requestsData);
     } catch (error: any) {
       console.error('Failed to load friends data:', error);
       showToast('친구 목록을 불러오는데 실패했습니다.', 'error');
@@ -101,45 +64,40 @@ export default function FriendsPage() {
     }
   };
 
-  // 친구 추가 요청
+  // 친구 추가 요청 (이메일로 직접 요청)
   const handleAddFriend = async () => {
     if (!searchEmail.trim()) {
       showToast('이메일을 입력해주세요.', 'error');
       return;
     }
 
+    // 이메일 형식 검증
+    if (!/\S+@\S+\.\S+/.test(searchEmail)) {
+      showToast('유효한 이메일 주소를 입력해주세요.', 'error');
+      return;
+    }
+
     setIsSearching(true);
 
     try {
-      // TODO: 백엔드 API 연동 시 주석 해제
-      // 1. 이메일로 사용자 검색 (별도 API 필요)
-      // 2. 친구 요청 보내기
-      // await friendApi.sendFriendRequest(foundUserId);
-
-      // Mock 데이터
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-
+      await sendFriendRequest(searchEmail);
       showToast('친구 요청을 보냈습니다!', 'success');
       setIsAddModalOpen(false);
       setSearchEmail('');
     } catch (error: any) {
       console.error('Failed to send friend request:', error);
-      showToast(error?.message || '친구 요청을 보낼 수 없습니다.', 'error');
+      const errorMessage = error?.message || '친구 요청을 보낼 수 없습니다.';
+      showToast(errorMessage, 'error');
     } finally {
       setIsSearching(false);
     }
   };
 
   // 친구 요청 수락
-  const handleAcceptRequest = async (requestId: number) => {
+  const handleAcceptRequest = async (friendshipId: number) => {
     try {
-      // TODO: 백엔드 API 연동 시 주석 해제
-      // await friendApi.acceptFriendRequest(requestId);
-
-      // Mock 데이터
-      await new Promise((resolve) => setTimeout(resolve, 500));
-
-      setPendingRequests((prev) => prev.filter((r) => r.id !== requestId));
+      await acceptFriendRequest(friendshipId);
+      setPendingRequests((prev) => prev.filter((r) => r.friendshipId !== friendshipId));
       showToast('친구 요청을 수락했습니다.', 'success');
       loadFriendsData(); // 목록 갱신
     } catch (error: any) {
@@ -149,15 +107,10 @@ export default function FriendsPage() {
   };
 
   // 친구 요청 거절
-  const handleRejectRequest = async (requestId: number) => {
+  const handleRejectRequest = async (friendshipId: number) => {
     try {
-      // TODO: 백엔드 API 연동 시 주석 해제
-      // await friendApi.rejectFriendRequest(requestId);
-
-      // Mock 데이터
-      await new Promise((resolve) => setTimeout(resolve, 500));
-
-      setPendingRequests((prev) => prev.filter((r) => r.id !== requestId));
+      await rejectFriendRequest(friendshipId);
+      setPendingRequests((prev) => prev.filter((r) => r.friendshipId !== friendshipId));
       showToast('친구 요청을 거절했습니다.', 'info');
     } catch (error: any) {
       console.error('Failed to reject friend request:', error);
@@ -171,13 +124,8 @@ export default function FriendsPage() {
     if (!confirmed) return;
 
     try {
-      // TODO: 백엔드 API 연동 시 주석 해제
-      // await friendApi.deleteFriend(friendId);
-
-      // Mock 데이터
-      await new Promise((resolve) => setTimeout(resolve, 500));
-
-      setFriends((prev) => prev.filter((f) => f.id !== friendId));
+      await deleteFriend(friendId);
+      setFriends((prev) => prev.filter((f) => f.friendId !== friendId));
       showToast('친구가 삭제되었습니다.', 'info');
     } catch (error: any) {
       console.error('Failed to delete friend:', error);
@@ -225,34 +173,34 @@ export default function FriendsPage() {
                 <div className="divide-y">
                   {pendingRequests.map((request) => (
                     <div
-                      key={request.id}
+                      key={request.friendshipId}
                       className="p-6 flex items-center justify-between hover:bg-gray-50 transition-colors"
                     >
                       <div className="flex items-center gap-4">
                         <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
                           <span className="text-blue-600 font-bold text-lg">
-                            ?
+                            {request.friendName[0]}
                           </span>
                         </div>
                         <div>
                           <p className="font-medium text-gray-900">
-                            사용자 #{request.fromUserId}
+                            {request.friendName}
                           </p>
                           <p className="text-sm text-gray-500">
-                            친구 요청을 보냈습니다
+                            {request.friendEmail}
                           </p>
                         </div>
                       </div>
                       <div className="flex gap-2">
                         <button
-                          onClick={() => handleAcceptRequest(request.id)}
+                          onClick={() => handleAcceptRequest(request.friendshipId)}
                           className="p-2 bg-green-100 text-green-600 rounded-full hover:bg-green-200 transition-colors"
                           title="수락"
                         >
                           <CheckIcon className="w-5 h-5" />
                         </button>
                         <button
-                          onClick={() => handleRejectRequest(request.id)}
+                          onClick={() => handleRejectRequest(request.friendshipId)}
                           className="p-2 bg-red-100 text-red-600 rounded-full hover:bg-red-200 transition-colors"
                           title="거절"
                         >
@@ -287,33 +235,27 @@ export default function FriendsPage() {
                 <div className="divide-y">
                   {friends.map((friend) => (
                     <div
-                      key={friend.id}
+                      key={friend.friendId}
                       className="p-6 flex items-center justify-between hover:bg-gray-50 transition-colors"
                     >
                       <div className="flex items-center gap-4">
                         <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
                           <span className="text-blue-600 font-bold text-lg">
-                            {friend.name[0]}
+                            {friend.friendName[0]}
                           </span>
                         </div>
                         <div>
                           <p className="font-medium text-gray-900">
-                            {friend.name}
+                            {friend.friendName}
                           </p>
                           <p className="text-sm text-gray-500">
-                            {friend.email}
+                            {friend.friendEmail}
                           </p>
-                          {friend.isLocationSharing && (
-                            <span className="inline-flex items-center gap-1 mt-1 text-xs text-green-600">
-                              <span className="w-2 h-2 bg-green-600 rounded-full"></span>
-                              위치 공유 중
-                            </span>
-                          )}
                         </div>
                       </div>
                       <button
                         onClick={() =>
-                          handleDeleteFriend(friend.id, friend.name)
+                          handleDeleteFriend(friend.friendId, friend.friendName)
                         }
                         className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
                         title="친구 삭제"
@@ -327,15 +269,6 @@ export default function FriendsPage() {
             </div>
           </>
         )}
-
-        {/* Mock 데이터 안내 */}
-        <div className="mt-6 bg-yellow-50 border border-yellow-200 rounded-lg p-4 text-sm text-yellow-800">
-          <p className="font-medium">🔧 개발 모드</p>
-          <p className="mt-1">
-            현재 Mock 데이터로 작동합니다. 백엔드 연동 후 실제 친구 관리가
-            가능합니다.
-          </p>
-        </div>
       </div>
 
       {/* 친구 추가 모달 */}

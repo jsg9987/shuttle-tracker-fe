@@ -4,7 +4,8 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuthStore, useMapStore, useLocationStore } from '@/stores';
 import { useGeolocation } from '@/hooks/useGeolocation';
-import { friendApi, shuttleApi } from '@/lib/api';
+import { getFriendsLocations } from '@/lib/api/location';
+import { getAllRoutes, getRouteStops } from '@/lib/api/shuttle';
 import { KakaoMap, ArrivalInfoCard, StopSelector, SearchBar } from '@/components/map';
 import { Button, useToast, Toast } from '@/components/common';
 import { ArrowPathIcon } from '@heroicons/react/24/outline';
@@ -79,41 +80,32 @@ export default function MapPage() {
   const loadInitialData = async () => {
     setIsLoading(true);
     try {
-      // TODO: 백엔드 API 연동 시 주석 해제
-      // const [friendsData, routesData] = await Promise.all([
-      //   friendApi.getFriends(),
-      //   shuttleApi.getRoutes(),
-      // ]);
+      const [friendLocations, routesData] = await Promise.all([
+        getFriendsLocations(),
+        getAllRoutes(),
+      ]);
 
-      // Mock 데이터
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-
-      const mockFriends: Friend[] = [
-        {
-          id: 2,
-          name: '김철수',
-          email: 'kim@ssafy.com',
-          currentLocation: { lat: 36.1076, lng: 128.4188 },
+      // FriendLocation → Friend 타입 변환
+      const friendsData: Friend[] = friendLocations
+        .filter((fl) => fl.isActive) // 위치 공유 중인 친구만
+        .map((fl) => ({
+          id: fl.friendId,
+          name: fl.friendName,
+          email: fl.friendEmail,
+          currentLocation: { lat: fl.latitude, lng: fl.longitude },
           isLocationSharing: true,
-          busRoute: { id: 1, routeName: '1호차' },
-        },
-        {
-          id: 3,
-          name: '이영희',
-          email: 'lee@ssafy.com',
-          currentLocation: { lat: 36.1086, lng: 128.4198 },
-          isLocationSharing: true,
-          busRoute: { id: 2, routeName: '2호차' },
-        },
-      ];
+          // busRoute는 백엔드에서 제공하지 않으므로 undefined
+        }));
 
-      const mockRoutes: ShuttleRoute[] = [
-        { id: 1, routeName: '1호차', color: '#FF0000' },
-        { id: 2, routeName: '2호차', color: '#0000FF' },
-      ];
+      // ShuttleRoute API 응답 → types 변환 (routeId → id)
+      const routes: ShuttleRoute[] = routesData.map((route, index) => ({
+        id: route.routeId,
+        routeName: route.routeName,
+        color: ['#FF0000', '#0000FF', '#00FF00', '#FFA500'][index % 4], // 색상 할당
+      }));
 
-      setFriends(mockFriends);
-      setRoutes(mockRoutes);
+      setFriends(friendsData);
+      setRoutes(routes);
     } catch (error: any) {
       console.error('Failed to load initial data:', error);
       showToast('데이터를 불러오는데 실패했습니다.', 'error');
@@ -141,20 +133,20 @@ export default function MapPage() {
   // 친구 선택해서 해당 셔틀 선택 시 노선 경유지 정보 모두 로드
   const loadRouteStops = async (routeId: number) => {
     try {
-      // TODO: 백엔드 API 연동 시 주석 해제
-      // const stops = await shuttleApi.getRouteStops(routeId);
+      const stopsData = await getRouteStops(routeId);
 
-      // Mock 데이터
-      await new Promise((resolve) => setTimeout(resolve, 500));
-      const mockStops: ShuttleStop[] = [
-        { id: 1, routeId, sequence: 1, stopName: '대전역', lat: 36.1076, lng: 128.4178, isTerminal: false },
-        { id: 2, routeId, sequence: 2, stopName: '시청', lat: 36.1086, lng: 128.4188, isTerminal: false },
-        { id: 3, routeId, sequence: 3, stopName: '대학교', lat: 36.1096, lng: 128.4198, isTerminal: false },
-        { id: 4, routeId, sequence: 4, stopName: 'SSAFY', lat: 36.1106, lng: 128.4208, isTerminal: true },
-      ];
+      // ShuttleStop API 응답 → types 변환 (stopId → id, latitude → lat, longitude → lng)
+      const stops: ShuttleStop[] = stopsData.map((stop) => ({
+        id: stop.stopId,
+        routeId,
+        sequence: stop.sequence,
+        stopName: stop.stopName,
+        lat: stop.latitude,
+        lng: stop.longitude,
+        isTerminal: stop.isTerminal,
+      }));
 
-      setRouteStops(mockStops);
-      // eslint-disable-next-line
+      setRouteStops(stops);
     } catch (error: any) {
       console.error('Failed to load route stops:', error);
       showToast('경유지 정보를 불러오는데 실패했습니다.', 'error');

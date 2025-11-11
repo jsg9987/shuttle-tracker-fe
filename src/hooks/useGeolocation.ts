@@ -8,7 +8,7 @@ import {
   requestLocationPermission,
   getGeolocationErrorMessage,
 } from '@/lib/utils/geolocation';
-import { locationApi } from '@/lib/api';
+import { updateMyLocation } from '@/lib/api/location';
 
 export const useGeolocation = () => {
   const { setMyLocation, setWatchId, watchId } = useLocationStore();
@@ -28,9 +28,9 @@ export const useGeolocation = () => {
           // Zustand 스토어에 저장
           setMyLocation(location);
 
-          // 위치 공유 중이면 서버에 업데이트 (필요시)
+          // 위치 공유 중이면 서버에 업데이트
           try {
-            await locationApi.updateMyLocation(location);
+            await updateMyLocation(location.lat, location.lng);
           } catch (error) {
             console.error('Failed to update location to server:', error);
           }

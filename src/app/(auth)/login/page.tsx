@@ -5,8 +5,8 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Button, Input, useToast, Toast } from '@/components/common';
 import { useAuthStore } from '@/stores';
-import { authApi } from '@/lib/api';
-import type { LoginRequest } from '@/types';
+import { login } from '@/lib/api/auth';
+import type { LoginRequest, User } from '@/types';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -51,23 +51,19 @@ export default function LoginPage() {
     setIsLoading(true);
 
     try {
-      // TODO: 백엔드 API 연동 시 주석 해제
-      // const response = await authApi.login(formData);
+      // 1. 로그인 API 호출 (모든 사용자 정보 포함)
+      const authResponse = await login(formData);
 
-      // Mock 데이터 (임시)
-      await new Promise((resolve) => setTimeout(resolve, 1000)); // 로딩 시뮬레이션
-
-      const mockResponse = {
-        user: {
-          id: 1,
-          email: formData.email,
-          name: '테스트 사용자',
-          locationShareAgree: false,
-        },
-        token: 'mock-jwt-token-' + Date.now(),
+      // 2. User 객체 생성
+      const user: User = {
+        email: authResponse.email,
+        name: authResponse.name,
+        locationShareAgree: authResponse.locationShareAgree,
       };
 
-      setAuth(mockResponse.user, mockResponse.token);
+      // 3. Zustand에 사용자 정보 및 토큰 저장 (자동으로 localStorage에 저장됨)
+      setAuth(user, authResponse.accessToken);
+
       showToast('로그인 성공!', 'success');
 
       // 홈으로 이동
@@ -76,10 +72,10 @@ export default function LoginPage() {
       }, 1000);
     } catch (error: any) {
       console.error('Login error:', error);
-      showToast(
-        error?.message || '로그인에 실패했습니다. 이메일과 비밀번호를 확인해주세요.',
-        'error'
-      );
+
+      // 백엔드 에러 메시지 추출
+      const errorMessage = error?.message || '로그인에 실패했습니다. 이메일과 비밀번호를 확인해주세요.';
+      showToast(errorMessage, 'error');
     } finally {
       setIsLoading(false);
     }
@@ -147,12 +143,6 @@ export default function LoginPage() {
             </p>
           </div>
         </form>
-
-        {/* Mock 데이터 안내 */}
-        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 text-sm text-yellow-800">
-          <p className="font-medium">🔧 개발 모드</p>
-          <p className="mt-1">현재 Mock 데이터로 작동합니다. 아무 이메일이나 입력해도 로그인됩니다.</p>
-        </div>
       </div>
 
       {/* Toasts */}
