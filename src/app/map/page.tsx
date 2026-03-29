@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useAuthStore, useMapStore, useLocationStore } from '@/stores';
 import { useGeolocation } from '@/hooks/useGeolocation';
 import { getFriendsLocations } from '@/lib/api/location';
-import { getAllRoutes, getRouteStops } from '@/lib/api/shuttle';
+import { getAllRoutes, getRouteStops, calculateArrivalTime } from '@/lib/api/shuttle';
 import { KakaoMap, ArrivalInfoCard, StopSelector, SearchBar } from '@/components/map';
 import { Button, useToast, Toast } from '@/components/common';
 import { ArrowPathIcon } from '@heroicons/react/24/outline';
@@ -94,7 +94,10 @@ export default function MapPage() {
           email: fl.friendEmail,
           currentLocation: { lat: fl.latitude, lng: fl.longitude },
           isLocationSharing: true,
-          // busRoute는 백엔드에서 제공하지 않으므로 undefined
+
+          busRoute: fl.routeId
+            ? { id: fl.routeId, routeName: fl.routeName ?? '' }
+            : undefined,
         }));
 
       // ShuttleRoute API 응답 → types 변환 (routeId → id)
@@ -174,39 +177,20 @@ export default function MapPage() {
 
   // 도착 시간 계산
   const handleCalculateArrival = async () => {
-    if (!selectedFriend || selectedStops.length === 0) {
-      showToast('친구와 경유지를 선택해주세요.', 'error');
-      return;
-    }
-
-    if (!myLocation) {
-      showToast('내 위치 정보가 필요합니다.', 'error');
+    if (!selectedRoute || selectedStops.length === 0) {
+      showToast('경유지를 선택해주세요.', 'error');
       return;
     }
 
     setIsCalculating(true);
 
     try {
-      // TODO: 백엔드 API 연동 시 주석 해제
-      // const result = await shuttleApi.calculateArrivalTime({
-      //   friendId: selectedFriend.id,
-      //   myLocation,
-      //   selectedStopIds: selectedStops.map((s) => s.id),
-      // });
+      const result = await calculateArrivalTime({
+        routeId: selectedRoute.id,
+        selectedStopIds: selectedStops.map((s) => s.id),
+      });
 
-      // Mock 데이터
-      await new Promise((resolve) => setTimeout(resolve, 1500));
-      const now = new Date();
-      const arrivalTime = new Date(now.getTime() + 15 * 60 * 1000); // 15분 후
-
-      const mockResult = {
-        routeName: selectedFriend.busRoute?.routeName || '셔틀 버스',
-        estimatedMinutes: 15,
-        estimatedArrivalTime: arrivalTime.toISOString(),
-        routePath: selectedStops.map((stop) => ({ lat: stop.lat, lng: stop.lng })),
-      };
-
-      setArrivalInfo(mockResult);
+      setArrivalInfo(result);
       showToast('도착 시간이 계산되었습니다!', 'success');
     } catch (error: any) {
       console.error('Failed to calculate arrival time:', error);
@@ -285,7 +269,7 @@ export default function MapPage() {
           friends={friends}
           selectedFriend={selectedFriend}
           routeStops={routeStops}
-          routePath={arrivalInfo?.routePath || []}
+          routePath={[]}
           onFriendClick={handleFriendClick}
           onStopClick={handleStopClick}
           selectedStops={selectedStops}
@@ -303,11 +287,6 @@ export default function MapPage() {
         />
       ))}
 
-      {/* Mock 데이터 안내 */}
-      <div className="absolute bottom-4 right-4 bg-yellow-50 border border-yellow-200 rounded-lg p-3 text-xs text-yellow-800 max-w-xs z-10">
-        <p className="font-medium">🔧 개발 모드</p>
-        <p className="mt-1">Mock 데이터로 작동합니다. 백엔드 연동 후 실제 데이터가 표시됩니다.</p>
-      </div>
     </div>
   );
 }
