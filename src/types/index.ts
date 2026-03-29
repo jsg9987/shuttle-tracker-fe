@@ -71,7 +71,9 @@ export interface Friend {
 // 셔틀 노선 (Shuttle_route 테이블)
 export interface ShuttleRoute {
   id: number;
-  routeName: string; // 예: "1호차", "2호차"
+  routeName: string; // 예: "광주 2호차"
+  region?: string;   // 예: "광주", "서울"
+  routeNumber?: number; // 예: 1, 2
   stops?: ShuttleStop[]; // 경유지 목록
   color?: string; // 맵에 표시할 노선 색상 (프론트 전용)
 }
@@ -91,17 +93,25 @@ export interface ShuttleStop {
 
 // 도착 시간 예측 요청
 export interface ArrivalTimeRequest {
-  friendId: number;
-  myLocation: Location;
+  routeId: number;
   selectedStopIds: number[]; // 선택된 경유지 ID 목록 (남은 경유지들)
+}
+
+// 정류장별 도착 시간 정보
+export interface StopArrivalInfo {
+  stopId: number;
+  stopName: string;
+  sequence: number;
+  status: 'PASSED' | 'UPCOMING';
+  estimatedMinutes?: number;       // UPCOMING인 경우에만
+  estimatedArrivalTime?: string;   // UPCOMING인 경우에만 (ISO 8601)
 }
 
 // 도착 시간 예측 응답
 export interface ArrivalTimeResponse {
   routeName: string;
-  estimatedMinutes: number; // 예상 소요 시간 (분)
-  estimatedArrivalTime: string; // 예상 도착 시간 (ISO 8601)
-  routePath: Location[]; // 카카오 API에서 받은 경로 좌표
+  stops: StopArrivalInfo[];
+  fallback: boolean; // true면 카카오 API 대신 자체 계산 (프론트에서 "대략" 표시)
 }
 
 // ==================== 검색 ====================

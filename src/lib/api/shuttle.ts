@@ -1,4 +1,5 @@
 import apiClient from './client';
+import type { ArrivalTimeRequest, ArrivalTimeResponse } from '@/types';
 
 // 백엔드 응답 타입
 interface BackendResponse<T> {
@@ -15,6 +16,8 @@ interface BackendResponse<T> {
 export interface ShuttleRoute {
   routeId: number;
   routeName: string;
+  region: string;
+  routeNumber: number;
   description: string;
 }
 
@@ -22,6 +25,8 @@ export interface ShuttleRoute {
 export interface ShuttleRouteDetail {
   routeId: number;
   routeName: string;
+  region: string;
+  routeNumber: number;
   description: string;
   stops: ShuttleStop[];
 }
@@ -81,8 +86,8 @@ export const searchStops = async (keyword: string): Promise<ShuttleStop[]> => {
   return response.data.data || [];
 };
 
-// TODO: 도착 시간 예측 API (백엔드에 아직 미구현)
-// export const calculateArrivalTime = async (data: ArrivalTimeRequest): Promise<ArrivalTimeResponse> => {
-//   const response = await apiClient.post<BackendResponse<ArrivalTimeResponse>>('/api/v1/shuttle/arrival-time', data);
-//   return response.data.data!;
-// };
+// 경유지별 도착 시간 예측
+export const calculateArrivalTime = async (data: ArrivalTimeRequest): Promise<ArrivalTimeResponse> => {
+  const response = await apiClient.post<BackendResponse<ArrivalTimeResponse>>('/api/v1/shuttle/arrival-time', data);
+  return response.data.data!;
+};

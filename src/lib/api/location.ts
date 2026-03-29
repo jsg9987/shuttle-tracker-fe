@@ -15,11 +15,13 @@ interface BackendResponse<T> {
 // 위치 공유 시작 (1시간)
 export const startLocationSharing = async (
   latitude: number,
-  longitude: number
+  longitude: number,
+  routeId?: number
 ): Promise<LocationShare> => {
   const response = await apiClient.post<BackendResponse<LocationShare>>('/api/v1/location/start', {
     latitude,
     longitude,
+    ...(routeId !== undefined && { routeId }),
   });
   return response.data.data!;
 };
@@ -65,4 +67,6 @@ export interface FriendLocation {
   latitude: number;
   longitude: number;
   isActive: boolean;
+  routeId?: number;    // 탑승 노선 ID
+  routeName?: string;  // 예: "광주 2호차"
 }
