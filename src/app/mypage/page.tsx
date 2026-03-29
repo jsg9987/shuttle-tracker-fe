@@ -87,8 +87,8 @@ export default function MyPage() {
 
     if (!passwordForm.newPassword) {
       errors.newPassword = '새 비밀번호를 입력해주세요.';
-    } else if (passwordForm.newPassword.length < 6) {
-      errors.newPassword = '비밀번호는 최소 6자 이상이어야 합니다.';
+    } else if (passwordForm.newPassword.length < 8 || passwordForm.newPassword.length > 20) {
+      errors.newPassword = '비밀번호는 8자 이상 20자 이하여야 합니다.';
     }
 
     if (!passwordForm.confirmPassword) {

@@ -38,8 +38,8 @@ export default function SignupPage() {
 
     if (!formData.password) {
       newErrors.password = '비밀번호를 입력해주세요.';
-    } else if (formData.password.length < 6) {
-      newErrors.password = '비밀번호는 최소 6자 이상이어야 합니다.';
+    } else if (formData.password.length < 8 || formData.password.length > 20) {
+      newErrors.password = '비밀번호는 8자 이상 20자 이하여야 합니다.';
     }
 
     if (!formData.passwordConfirm) {
@@ -130,7 +130,7 @@ export default function SignupPage() {
             <Input
               label="비밀번호"
               type="password"
-              placeholder="최소 6자 이상"
+              placeholder="8~20자"
               value={formData.password}
               onChange={(e) =>
                 setFormData({ ...formData, password: e.target.value })
