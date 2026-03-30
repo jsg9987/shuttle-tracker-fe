@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useCallback } from 'react';
+import { useEffect, useCallback, useRef } from 'react';
 import { useLocationStore } from '@/stores';
 import {
   watchPosition,
@@ -10,8 +10,11 @@ import {
 } from '@/lib/utils/geolocation';
 import { updateMyLocation } from '@/lib/api/location';
 
+const SERVER_UPDATE_INTERVAL_MS = 10_000; // 서버 전송 주기: 10초
+
 export const useGeolocation = () => {
-  const { setMyLocation, setWatchId, watchId } = useLocationStore();
+  const { setMyLocation, setWatchId, watchId, isSharing } = useLocationStore();
+  const lastServerUpdateRef = useRef<number>(0);
 
   // 위치 추적 시작
   const startTracking = useCallback(async () => {
@@ -25,14 +28,19 @@ export const useGeolocation = () => {
       // 위치 추적 시작
       const id = watchPosition(
         async (location) => {
-          // Zustand 스토어에 저장
+          // UI는 즉시 반영
           setMyLocation(location);
 
-          // 위치 공유 중이면 서버에 업데이트
-          try {
-            await updateMyLocation(location.lat, location.lng);
-          } catch (error) {
-            console.error('Failed to update location to server:', error);
+          // 서버 업데이트는 10초 간격으로 쓰로틀링
+          if (isSharing) {
+            const now = Date.now();
+            if (now - lastServerUpdateRef.current < SERVER_UPDATE_INTERVAL_MS) return;
+            lastServerUpdateRef.current = now;
+            try {
+              await updateMyLocation(location.lat, location.lng);
+            } catch (error) {
+              console.error('Failed to update location to server:', error);
+            }
           }
         },
         (error) => {
@@ -45,7 +53,7 @@ export const useGeolocation = () => {
       console.error('Failed to start tracking:', error);
       throw error;
     }
-  }, [setMyLocation, setWatchId]);
+  }, [setMyLocation, setWatchId, isSharing]);
 
   // 위치 추적 중지
   const stopTracking = useCallback(() => {

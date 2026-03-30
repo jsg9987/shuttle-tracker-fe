@@ -94,7 +94,6 @@ export interface ShuttleStop {
 // 도착 시간 예측 요청
 export interface ArrivalTimeRequest {
   routeId: number;
-  selectedStopIds: number[]; // 선택된 경유지 ID 목록 (남은 경유지들)
 }
 
 // 정류장별 도착 시간 정보

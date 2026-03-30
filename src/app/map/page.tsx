@@ -5,8 +5,9 @@ import { useRouter } from 'next/navigation';
 import { useAuthStore, useMapStore, useLocationStore } from '@/stores';
 import { useGeolocation } from '@/hooks/useGeolocation';
 import { getFriendsLocations } from '@/lib/api/location';
+import { getFriends } from '@/lib/api/friend';
 import { getAllRoutes, getRouteStops, calculateArrivalTime } from '@/lib/api/shuttle';
-import { KakaoMap, ArrivalInfoCard, StopSelector, SearchBar } from '@/components/map';
+import { KakaoMap, ArrivalInfoCard, SearchBar } from '@/components/map';
 import { Button, useToast, Toast } from '@/components/common';
 import { ArrowPathIcon } from '@heroicons/react/24/outline';
 import type { Friend, ShuttleRoute, ShuttleStop } from '@/types';
@@ -21,14 +22,12 @@ export default function MapPage() {
     selectedFriend,
     routes,
     selectedRoute,
-    selectedStops,
     arrivalInfo,
     isCalculating,
     setFriends,
     selectFriend,
     setRoutes,
     selectRoute,
-    setSelectedStops,
     setArrivalInfo,
     setIsCalculating,
   } = useMapStore();
@@ -80,25 +79,29 @@ export default function MapPage() {
   const loadInitialData = async () => {
     setIsLoading(true);
     try {
-      const [friendLocations, routesData] = await Promise.all([
+      const [friendLocations, allFriends, routesData] = await Promise.all([
         getFriendsLocations(),
+        getFriends(),
         getAllRoutes(),
       ]);
 
-      // FriendLocation → Friend 타입 변환
-      const friendsData: Friend[] = friendLocations
-        .filter((fl) => fl.isActive) // 위치 공유 중인 친구만
-        .map((fl) => ({
-          id: fl.friendId,
-          name: fl.friendName,
-          email: fl.friendEmail,
-          currentLocation: { lat: fl.latitude, lng: fl.longitude },
-          isLocationSharing: true,
+      // 위치 공유 중인 친구 맵 (friendId → location 데이터)
+      const locationMap = new Map(
+        friendLocations.filter((fl) => fl.isActive).map((fl) => [fl.friendId, fl])
+      );
 
-          busRoute: fl.routeId
-            ? { id: fl.routeId, routeName: fl.routeName ?? '' }
-            : undefined,
-        }));
+      // 전체 친구 목록 기준으로 병합 (위치 공유 중이면 위치 정보 포함)
+      const friendsData: Friend[] = allFriends.map((f) => {
+        const loc = locationMap.get(f.friendId);
+        return {
+          id: f.friendId,
+          name: f.friendName,
+          email: f.friendEmail,
+          isLocationSharing: !!loc,
+          currentLocation: loc ? { lat: loc.latitude, lng: loc.longitude } : undefined,
+          busRoute: loc?.routeId ? { id: loc.routeId, routeName: loc.routeName ?? '' } : undefined,
+        };
+      });
 
       // ShuttleRoute API 응답 → types 변환 (routeId → id)
       const routes: ShuttleRoute[] = routesData.map((route, index) => ({
@@ -156,10 +159,18 @@ export default function MapPage() {
     }
   };
 
-  // 친구 마커 클릭
-  const handleFriendClick = (friend: Friend) => {
+  // 친구 마커 클릭 → 자동으로 도착 시간 계산
+  const handleFriendClick = async (friend: Friend) => {
+    if (!friend.isLocationSharing) {
+      showToast(`${friend.name}님은 현재 위치를 공유하고 있지 않습니다.`, 'error');
+      return;
+    }
     selectFriend(friend);
-    setArrivalInfo(null); // 기존 도착 정보 초기화
+    setArrivalInfo(null);
+
+    if (friend.busRoute) {
+      await handleCalculateArrival(friend.busRoute.id);
+    }
   };
 
   // 노선 선택
@@ -176,22 +187,11 @@ export default function MapPage() {
   };
 
   // 도착 시간 계산
-  const handleCalculateArrival = async () => {
-    if (!selectedRoute || selectedStops.length === 0) {
-      showToast('경유지를 선택해주세요.', 'error');
-      return;
-    }
-
+  const handleCalculateArrival = async (routeId: number) => {
     setIsCalculating(true);
-
     try {
-      const result = await calculateArrivalTime({
-        routeId: selectedRoute.id,
-        selectedStopIds: selectedStops.map((s) => s.id),
-      });
-
+      const result = await calculateArrivalTime({ routeId });
       setArrivalInfo(result);
-      showToast('도착 시간이 계산되었습니다!', 'success');
     } catch (error: any) {
       console.error('Failed to calculate arrival time:', error);
       showToast('도착 시간 계산에 실패했습니다.', 'error');
@@ -243,18 +243,6 @@ export default function MapPage() {
         <ArrowPathIcon className="w-5 h-5 text-gray-700" />
       </button>
 
-      {/* 경유지 선택기 */}
-      {selectedFriend && routeStops.length > 0 && (
-        <StopSelector
-          friend={selectedFriend}
-          stops={routeStops}
-          selectedStops={selectedStops}
-          onStopsSelected={setSelectedStops}
-          onCalculate={handleCalculateArrival}
-          isCalculating={isCalculating}
-        />
-      )}
-
       {/* 도착 정보 카드 */}
       {arrivalInfo && (
         <ArrivalInfoCard
@@ -272,7 +260,7 @@ export default function MapPage() {
           routePath={[]}
           onFriendClick={handleFriendClick}
           onStopClick={handleStopClick}
-          selectedStops={selectedStops}
+          selectedStops={[]}
           myLocation={myLocation}
         />
       )}
