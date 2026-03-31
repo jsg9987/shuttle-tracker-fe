@@ -13,7 +13,7 @@ import { updateMyLocation } from '@/lib/api/location';
 const SERVER_UPDATE_INTERVAL_MS = 10_000; // 서버 전송 주기: 10초
 
 export const useGeolocation = () => {
-  const { setMyLocation, setWatchId, watchId, isSharing } = useLocationStore();
+  const { setMyLocation, setWatchId, watchId } = useLocationStore();
   const lastServerUpdateRef = useRef<number>(0);
 
   // 위치 추적 시작
@@ -32,7 +32,8 @@ export const useGeolocation = () => {
           setMyLocation(location);
 
           // 서버 업데이트는 10초 간격으로 쓰로틀링
-          if (isSharing) {
+          // getState()로 항상 최신 isSharing 값 읽기 (stale closure 방지)
+          if (useLocationStore.getState().isSharing) {
             const now = Date.now();
             if (now - lastServerUpdateRef.current < SERVER_UPDATE_INTERVAL_MS) return;
             lastServerUpdateRef.current = now;
@@ -53,7 +54,7 @@ export const useGeolocation = () => {
       console.error('Failed to start tracking:', error);
       throw error;
     }
-  }, [setMyLocation, setWatchId, isSharing]);
+  }, [setMyLocation, setWatchId]);
 
   // 위치 추적 중지
   const stopTracking = useCallback(() => {

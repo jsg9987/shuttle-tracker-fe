@@ -6,6 +6,8 @@ import { Button, Toggle, useToast, Toast } from '@/components/common';
 import { useAuthStore, useLocationStore } from '@/stores';
 import { useGeolocation } from '@/hooks/useGeolocation';
 import { startLocationSharing as apiStartLocationSharing, stopLocationSharing as apiStopLocationSharing, getMyLocationShare } from '@/lib/api/location';
+import { getAllRoutes } from '@/lib/api/shuttle';
+import type { ShuttleRoute } from '@/lib/api/shuttle';
 import { getCurrentPosition } from '@/lib/utils/geolocation';
 import { MapPinIcon, ClockIcon } from '@heroicons/react/24/solid';
 
@@ -17,6 +19,14 @@ export default function Home() {
   const { toasts, showToast, removeToast } = useToast();
 
   const [isLoading, setIsLoading] = useState(false);
+  const [routes, setRoutes] = useState<ShuttleRoute[]>([]);
+  const [selectedRouteId, setSelectedRouteId] = useState<number | null>(null);
+
+  // 노선 목록 로드
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    getAllRoutes().then(setRoutes).catch(() => {});
+  }, [isAuthenticated]);
 
   // 페이지 로드 시 기존 위치 공유 세션 복원
   useEffect(() => {
@@ -82,7 +92,8 @@ export default function Home() {
       // 2. 백엔드에 위치 공유 시작 요청
       const locationShare = await apiStartLocationSharing(
         currentLocation.lat,
-        currentLocation.lng
+        currentLocation.lng,
+        selectedRouteId ?? undefined
       );
 
       // 3. Zustand 스토어에 저장
@@ -188,6 +199,27 @@ export default function Home() {
                 : '위치를 공유하여 친구들이 버스 도착 시간을 확인할 수 있게 하세요.'}
             </p>
 
+            {/* 노선 선택 (공유 시작 전에만 표시) */}
+            {!isSharing && isAuthenticated && (
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  탑승 노선 선택
+                </label>
+                <select
+                  className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  value={selectedRouteId ?? ''}
+                  onChange={(e) => setSelectedRouteId(e.target.value ? Number(e.target.value) : null)}
+                >
+                  <option value="">노선을 선택하세요</option>
+                  {routes.map((route) => (
+                    <option key={route.routeId} value={route.routeId}>
+                      {route.routeName}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+
             <div className="flex items-center justify-between mb-6">
               <span className="text-sm font-medium text-gray-700">
                 {isSharing ? '공유 중' : '공유 꺼짐'}
@@ -195,9 +227,13 @@ export default function Home() {
               <Toggle
                 enabled={isSharing}
                 onChange={handleToggleSharing}
-                disabled={isLoading}
+                disabled={isLoading || (!isSharing && selectedRouteId === null)}
               />
             </div>
+
+            {!isSharing && selectedRouteId === null && isAuthenticated && (
+              <p className="text-xs text-gray-400 mb-2">노선을 선택해야 공유를 시작할 수 있습니다.</p>
+            )}
 
             {isSharing && remainingTime !== null && (
               <div className="flex items-center gap-2 p-4 bg-blue-50 rounded-lg">
@@ -247,7 +283,7 @@ export default function Home() {
           <ol className="space-y-3 text-gray-700">
             <li className="flex gap-3">
               <span className="font-bold text-blue-600">1.</span>
-              <span>버스에 탑승한 후 위치 공유를 켜주세요. (1시간 동안 유지됩니다)</span>
+              <span>버스에 탑승한 후 노선을 선택하고 위치 공유를 켜주세요. (1시간 동안 유지됩니다)</span>
             </li>
             <li className="flex gap-3">
               <span className="font-bold text-blue-600">2.</span>
@@ -255,7 +291,7 @@ export default function Home() {
             </li>
             <li className="flex gap-3">
               <span className="font-bold text-blue-600">3.</span>
-              <span>친구 마커를 클릭하고 남은 경유지를 선택하여 도착 시간을 확인하세요.</span>
+              <span>친구 마커를 클릭하면 해당 노선의 도착 시간이 자동으로 계산됩니다.</span>
             </li>
           </ol>
         </div>
